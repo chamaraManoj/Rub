@@ -731,9 +731,9 @@ int main(int argc, char** argv)
 		return 1;
 	}
 	*/
-	if ((ret = encoder.open_input_file("E:\\ocean_720p_noSound_0_0.mp4")) < 0)
+	if ((ret = encoder.open_input_file("H:\\ocean_nosounsd_720p_0_0.mp4")) < 0)
 		goto end;
-	if ((ret = encoder.open_output_file("E:\\output2_new_new_120.mp4")) < 0)
+	if ((ret = encoder.open_output_file("H:\\output2_1.mp4", "H:\\output2_2.mp4", "H:\\output2_3.mp4", "H:\\output2_4.mp4")) < 0)
 		goto end;
 	if ((ret = encoder.init_filters()) < 0)
 		goto end;
