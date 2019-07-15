@@ -147,50 +147,71 @@ int  Encoder::open_input_file(const char* filename)
 
 int Encoder:: open_output_file(const char* filename1, const char* filename2, const char* filename3, const char* filename4)
 {
-	AVStream* out_stream;
+	AVStream* out_stream_1;
+	AVStream* out_stream_2;
+	AVStream* out_stream_3;
+	AVStream* out_stream_4;
 	AVStream* in_stream;
 	AVCodecContext* dec_ctx, *enc_ctx;
 	AVCodec* encoder;
 	int ret;
 	unsigned int i;
 
-	AVRational av1 = { 1,120 };
+	
 
 
 	//ofmt_ctx_1 = NULL;
 
+	/*Allocate avformat output context for 4 different file names*/
 	avformat_alloc_output_context2(&ofmt_ctx_1, NULL, NULL, filename1);
 	if (!ofmt_ctx_1) {
-		av_log(NULL, AV_LOG_ERROR, "Could not create output context\n");
+		av_log(NULL, AV_LOG_ERROR, "Could not create output context_1\n");
 		return AVERROR_UNKNOWN;
 	}
 	avformat_alloc_output_context2(&ofmt_ctx_2, NULL, NULL, filename2);
 	if (!ofmt_ctx_1) {
-		av_log(NULL, AV_LOG_ERROR, "Could not create output context\n");
+		av_log(NULL, AV_LOG_ERROR, "Could not create output context_2\n");
 		return AVERROR_UNKNOWN;
 	}
 
 	avformat_alloc_output_context2(&ofmt_ctx_3, NULL, NULL, filename3);
 	if (!ofmt_ctx_1) {
-		av_log(NULL, AV_LOG_ERROR, "Could not create output context\n");
+		av_log(NULL, AV_LOG_ERROR, "Could not create output context_3\n");
 		return AVERROR_UNKNOWN;
 	}
 
 	avformat_alloc_output_context2(&ofmt_ctx_4, NULL, NULL, filename4);
 	if (!ofmt_ctx_1) {
-		av_log(NULL, AV_LOG_ERROR, "Could not create output context\n");
+		av_log(NULL, AV_LOG_ERROR, "Could not create output context_4\n");
 		return AVERROR_UNKNOWN;
 	}
 
-	//Code ammendements
-
-
+	
 	for (i = 0; i < ifmt_ctx->nb_streams; i++) {
-		out_stream = avformat_new_stream(ofmt_ctx_1, NULL);
-		if (!out_stream) {
-			av_log(NULL, AV_LOG_ERROR, "Failed allocating output stream\n");
+		
+		/*Adding 4 output stream for the 4 seperate files*/
+		out_stream_1 = avformat_new_stream(ofmt_ctx_1, NULL);
+		if (!out_stream_1) {
+			av_log(NULL, AV_LOG_ERROR, "Failed allocating output stream_1\n");
 			return AVERROR_UNKNOWN;
 		}
+
+		out_stream_2 = avformat_new_stream(ofmt_ctx_2, NULL);
+		if (!out_stream_2) {
+			av_log(NULL, AV_LOG_ERROR, "Failed allocating output stream_1\n");
+			return AVERROR_UNKNOWN;
+		}
+		out_stream_3 = avformat_new_stream(ofmt_ctx_3, NULL);
+		if (!out_stream_3) {
+			av_log(NULL, AV_LOG_ERROR, "Failed allocating output stream_1\n");
+			return AVERROR_UNKNOWN;
+		}
+		out_stream_4 = avformat_new_stream(ofmt_ctx_4, NULL);
+		if (!out_stream_4) {
+			av_log(NULL, AV_LOG_ERROR, "Failed allocating output stream_1\n");
+			return AVERROR_UNKNOWN;
+		}
+
 
 		in_stream = ifmt_ctx->streams[i];
 		dec_ctx = stream_ctx[i].dec_ctx;
@@ -222,7 +243,7 @@ int Encoder:: open_output_file(const char* filename1, const char* filename2, con
 				else
 					enc_ctx->pix_fmt = dec_ctx->pix_fmt;
 				/* video time_base can be set to whatever is handy and supported by encoder */
-
+				AVRational av1 = { 1,60 };
 				enc_ctx->time_base = av1;
 				//enc_ctx->time_base = av_inv_q(dec_ctx->framerate);
 			}
@@ -236,6 +257,8 @@ int Encoder:: open_output_file(const char* filename1, const char* filename2, con
 				enc_ctx->time_base = av2;
 			}
 
+			/*Since all the 4 streams are the same we can 
+			just consider the ofmt_ctx_1*/
 			if (ofmt_ctx_1->oformat->flags & AVFMT_GLOBALHEADER)
 				enc_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 
@@ -245,13 +268,34 @@ int Encoder:: open_output_file(const char* filename1, const char* filename2, con
 				av_log(NULL, AV_LOG_ERROR, "Cannot open video encoder for stream #%u\n", i);
 				return ret;
 			}
-			ret = avcodec_parameters_from_context(out_stream->codecpar, enc_ctx);
+
+			/*Copying the encoder parameter to the 4 output streams*/
+			ret = avcodec_parameters_from_context(out_stream_1->codecpar, enc_ctx);
 			if (ret < 0) {
-				av_log(NULL, AV_LOG_ERROR, "Failed to copy encoder parameters to output stream #%u\n", i);
+				av_log(NULL, AV_LOG_ERROR, "Failed to copy encoder parameters to output stream 1 #%u\n", i);
+				return ret;
+			}
+			ret = avcodec_parameters_from_context(out_stream_2->codecpar, enc_ctx);
+			if (ret < 0) {
+				av_log(NULL, AV_LOG_ERROR, "Failed to copy encoder parameters to output stream 2 #%u\n", i);
+				return ret;
+			}
+			ret = avcodec_parameters_from_context(out_stream_3->codecpar, enc_ctx);
+			if (ret < 0) {
+				av_log(NULL, AV_LOG_ERROR, "Failed to copy encoder parameters to output stream 3 #%u\n", i);
+				return ret;
+			}
+			ret = avcodec_parameters_from_context(out_stream_4->codecpar, enc_ctx);
+			if (ret < 0) {
+				av_log(NULL, AV_LOG_ERROR, "Failed to copy encoder parameters to output stream 4 #%u\n", i);
 				return ret;
 			}
 
-			out_stream->time_base = enc_ctx->time_base;
+			out_stream_1->time_base = enc_ctx->time_base;
+			out_stream_2->time_base = enc_ctx->time_base;
+			out_stream_3->time_base = enc_ctx->time_base;
+			out_stream_4->time_base = enc_ctx->time_base;
+
 			stream_ctx[i].enc_ctx = enc_ctx;
 		}
 		else if (dec_ctx->codec_type == AVMEDIA_TYPE_UNKNOWN) {
@@ -260,21 +304,63 @@ int Encoder:: open_output_file(const char* filename1, const char* filename2, con
 		}
 		else {
 			/* if this stream must be remuxed */
-			ret = avcodec_parameters_copy(out_stream->codecpar, in_stream->codecpar);
+			ret = avcodec_parameters_copy(out_stream_1->codecpar, in_stream->codecpar);
 			if (ret < 0) {
-				av_log(NULL, AV_LOG_ERROR, "Copying parameters for stream #%u failed\n", i);
+				av_log(NULL, AV_LOG_ERROR, "Copying parameters for stream 1 #%u failed\n", i);
 				return ret;
 			}
-			out_stream->time_base = in_stream->time_base;
+			ret = avcodec_parameters_copy(out_stream_2->codecpar, in_stream->codecpar);
+			if (ret < 0) {
+				av_log(NULL, AV_LOG_ERROR, "Copying parameters for stream 2 #%u failed\n", i);
+				return ret;
+			}
+			ret = avcodec_parameters_copy(out_stream_3->codecpar, in_stream->codecpar);
+			if (ret < 0) {
+				av_log(NULL, AV_LOG_ERROR, "Copying parameters for stream 3 #%u failed\n", i);
+				return ret;
+			}
+			ret = avcodec_parameters_copy(out_stream_4->codecpar, in_stream->codecpar);
+			if (ret < 0) {
+				av_log(NULL, AV_LOG_ERROR, "Copying parameters for stream 4 #%u failed\n", i);
+				return ret;
+			}
+			out_stream_1->time_base = in_stream->time_base;
+			out_stream_2->time_base = in_stream->time_base;
+			out_stream_3->time_base = in_stream->time_base;
+			out_stream_4->time_base = in_stream->time_base;
 		}
 
 	}
-	av_dump_format(ofmt_ctx_1, 0, filename, 1);
+	av_dump_format(ofmt_ctx_1, 0, filename1, 1);
+	av_dump_format(ofmt_ctx_2, 0, filename2, 1);
+	av_dump_format(ofmt_ctx_3, 0, filename3, 1);
+	av_dump_format(ofmt_ctx_4, 0, filename4, 1);
 
 	if (!(ofmt_ctx_1->oformat->flags & AVFMT_NOFILE)) {
-		ret = avio_open(&ofmt_ctx_1->pb, filename, AVIO_FLAG_WRITE);
+		ret = avio_open(&ofmt_ctx_1->pb, filename1, AVIO_FLAG_WRITE);
 		if (ret < 0) {
-			av_log(NULL, AV_LOG_ERROR, "Could not open output file '%s'", filename);
+			av_log(NULL, AV_LOG_ERROR, "Could not open output file 1 '%s'", filename1);
+			return ret;
+		}
+	}
+	if (!(ofmt_ctx_2->oformat->flags & AVFMT_NOFILE)) {
+		ret = avio_open(&ofmt_ctx_2->pb, filename2, AVIO_FLAG_WRITE);
+		if (ret < 0) {
+			av_log(NULL, AV_LOG_ERROR, "Could not open output file 2 '%s'", filename2);
+			return ret;
+		}
+	}
+	if (!(ofmt_ctx_3->oformat->flags & AVFMT_NOFILE)) {
+		ret = avio_open(&ofmt_ctx_3->pb, filename3, AVIO_FLAG_WRITE);
+		if (ret < 0) {
+			av_log(NULL, AV_LOG_ERROR, "Could not open output file 3 '%s'", filename3);
+			return ret;
+		}
+	}
+	if (!(ofmt_ctx_4->oformat->flags & AVFMT_NOFILE)) {
+		ret = avio_open(&ofmt_ctx_4->pb, filename4, AVIO_FLAG_WRITE);
+		if (ret < 0) {
+			av_log(NULL, AV_LOG_ERROR, "Could not open output file 4'%s'", filename4);
 			return ret;
 		}
 	}
@@ -282,9 +368,27 @@ int Encoder:: open_output_file(const char* filename1, const char* filename2, con
 	/* init muxer, write output file header */
 	ret = avformat_write_header(ofmt_ctx_1, NULL);
 	if (ret < 0) {
-		av_log(NULL, AV_LOG_ERROR, "Error occurred when opening output file\n");
+		av_log(NULL, AV_LOG_ERROR, "Error occurred when opening output 1 file\n");
 		return ret;
 	}
+	ret = avformat_write_header(ofmt_ctx_2, NULL);
+	if (ret < 0) {
+		av_log(NULL, AV_LOG_ERROR, "Error occurred when opening output 2 file\n");
+		return ret;
+	}
+
+	ret = avformat_write_header(ofmt_ctx_3, NULL);
+	if (ret < 0) {
+		av_log(NULL, AV_LOG_ERROR, "Error occurred when opening output 3 file\n");
+		return ret;
+	}
+
+	ret = avformat_write_header(ofmt_ctx_4, NULL);
+	if (ret < 0) {
+		av_log(NULL, AV_LOG_ERROR, "Error occurred when opening output 4 file\n");
+		return ret;
+	}
+
 
 	return 0;
 }
