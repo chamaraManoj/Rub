@@ -48,12 +48,15 @@ public:
 	typedef struct StreamContext;
 
 	static AVFormatContext* ifmt_ctx;
-	static AVFormatContext* ofmt_ctx;	
+	static AVFormatContext* ofmt_ctx_1;
+	static AVFormatContext* ofmt_ctx_2;
+	static AVFormatContext* ofmt_ctx_3;
+	static AVFormatContext* ofmt_ctx_4;
 	static FilteringContext* filter_ctx;	
 	static StreamContext* stream_ctx;
 
 	static int open_input_file(const char* filename);
-	static int open_output_file(const char* filename);
+	static int open_output_file(const char* filename1, const char* filename2, const char* filename3, const char* filename4);
 	static int init_filter(FilteringContext* fctx, AVCodecContext* dec_ctx, AVCodecContext* enc_ctx, const char* filter_spec);
 	static int init_filters(void);
 	static int encode_write_frame(AVFrame* filt_frame, unsigned int stream_index, int* got_frame);
@@ -74,7 +77,11 @@ struct Encoder::StreamContext {
 } StreamContext;
 
 AVFormatContext* Encoder::ifmt_ctx = NULL;
-AVFormatContext* Encoder::ofmt_ctx = NULL;
+AVFormatContext* Encoder::ofmt_ctx_1 = NULL;
+AVFormatContext* Encoder::ofmt_ctx_2 = NULL;
+AVFormatContext* Encoder::ofmt_ctx_3 = NULL;
+AVFormatContext* Encoder::ofmt_ctx_4 = NULL;
+
 struct Encoder::FilteringContext* Encoder::filter_ctx = NULL;
 struct Encoder::StreamContext* Encoder::stream_ctx = NULL;
 
@@ -138,7 +145,7 @@ int  Encoder::open_input_file(const char* filename)
 	return 0;
 }
 
-int Encoder:: open_output_file(const char* filename)
+int Encoder:: open_output_file(const char* filename1, const char* filename2, const char* filename3, const char* filename4)
 {
 	AVStream* out_stream;
 	AVStream* in_stream;
@@ -150,16 +157,36 @@ int Encoder:: open_output_file(const char* filename)
 	AVRational av1 = { 1,120 };
 
 
-	ofmt_ctx = NULL;
-	avformat_alloc_output_context2(&ofmt_ctx, NULL, NULL, filename);
-	if (!ofmt_ctx) {
+	//ofmt_ctx_1 = NULL;
+
+	avformat_alloc_output_context2(&ofmt_ctx_1, NULL, NULL, filename1);
+	if (!ofmt_ctx_1) {
+		av_log(NULL, AV_LOG_ERROR, "Could not create output context\n");
+		return AVERROR_UNKNOWN;
+	}
+	avformat_alloc_output_context2(&ofmt_ctx_2, NULL, NULL, filename2);
+	if (!ofmt_ctx_1) {
 		av_log(NULL, AV_LOG_ERROR, "Could not create output context\n");
 		return AVERROR_UNKNOWN;
 	}
 
+	avformat_alloc_output_context2(&ofmt_ctx_3, NULL, NULL, filename3);
+	if (!ofmt_ctx_1) {
+		av_log(NULL, AV_LOG_ERROR, "Could not create output context\n");
+		return AVERROR_UNKNOWN;
+	}
+
+	avformat_alloc_output_context2(&ofmt_ctx_4, NULL, NULL, filename4);
+	if (!ofmt_ctx_1) {
+		av_log(NULL, AV_LOG_ERROR, "Could not create output context\n");
+		return AVERROR_UNKNOWN;
+	}
+
+	//Code ammendements
+
 
 	for (i = 0; i < ifmt_ctx->nb_streams; i++) {
-		out_stream = avformat_new_stream(ofmt_ctx, NULL);
+		out_stream = avformat_new_stream(ofmt_ctx_1, NULL);
 		if (!out_stream) {
 			av_log(NULL, AV_LOG_ERROR, "Failed allocating output stream\n");
 			return AVERROR_UNKNOWN;
@@ -209,7 +236,7 @@ int Encoder:: open_output_file(const char* filename)
 				enc_ctx->time_base = av2;
 			}
 
-			if (ofmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
+			if (ofmt_ctx_1->oformat->flags & AVFMT_GLOBALHEADER)
 				enc_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 
 			/* Third parameter can be used to pass settings to encoder */
@@ -242,10 +269,10 @@ int Encoder:: open_output_file(const char* filename)
 		}
 
 	}
-	av_dump_format(ofmt_ctx, 0, filename, 1);
+	av_dump_format(ofmt_ctx_1, 0, filename, 1);
 
-	if (!(ofmt_ctx->oformat->flags & AVFMT_NOFILE)) {
-		ret = avio_open(&ofmt_ctx->pb, filename, AVIO_FLAG_WRITE);
+	if (!(ofmt_ctx_1->oformat->flags & AVFMT_NOFILE)) {
+		ret = avio_open(&ofmt_ctx_1->pb, filename, AVIO_FLAG_WRITE);
 		if (ret < 0) {
 			av_log(NULL, AV_LOG_ERROR, "Could not open output file '%s'", filename);
 			return ret;
@@ -253,7 +280,7 @@ int Encoder:: open_output_file(const char* filename)
 	}
 
 	/* init muxer, write output file header */
-	ret = avformat_write_header(ofmt_ctx, NULL);
+	ret = avformat_write_header(ofmt_ctx_1, NULL);
 	if (ret < 0) {
 		av_log(NULL, AV_LOG_ERROR, "Error occurred when opening output file\n");
 		return ret;
@@ -505,11 +532,11 @@ int Encoder::encode_write_frame(AVFrame* filt_frame, unsigned int stream_index, 
 	enc_pkt.stream_index = stream_index;
 	av_packet_rescale_ts(&enc_pkt,
 		stream_ctx[stream_index].enc_ctx->time_base,
-		ofmt_ctx->streams[stream_index]->time_base);
+		ofmt_ctx_1->streams[stream_index]->time_base);
 
 	av_log(NULL, AV_LOG_INFO, "Muxing frame\n");
 	/* mux encoded frame */
-	ret = av_interleaved_write_frame(ofmt_ctx, &enc_pkt);
+	ret = av_interleaved_write_frame(ofmt_ctx_1, &enc_pkt);
 	return ret;
 }
 
@@ -651,9 +678,9 @@ int main(int argc, char** argv)
 			/* remux this frame without reencoding */
 			av_packet_rescale_ts(&packet,
 				encoder.ifmt_ctx->streams[stream_index]->time_base,
-				encoder.ofmt_ctx->streams[stream_index]->time_base);
+				encoder.ofmt_ctx_1->streams[stream_index]->time_base);
 
-			ret = av_interleaved_write_frame(encoder.ofmt_ctx, &packet);
+			ret = av_interleaved_write_frame(encoder.ofmt_ctx_1, &packet);
 			if (ret < 0)
 				goto end;
 		}
@@ -679,13 +706,13 @@ int main(int argc, char** argv)
 		}
 	}
 
-	av_write_trailer(encoder.ofmt_ctx);
+	av_write_trailer(encoder.ofmt_ctx_1);
 end:
 	av_packet_unref(&packet);
 	av_frame_free(&frame);
 	for (i = 0; i < encoder.ifmt_ctx->nb_streams; i++) {
 		avcodec_free_context(&encoder.stream_ctx[i].dec_ctx);
-		if (encoder.ofmt_ctx &&  encoder.ofmt_ctx->nb_streams > i &&  encoder.ofmt_ctx->streams[i] && encoder.stream_ctx[i].enc_ctx)
+		if (encoder.ofmt_ctx_1 &&  encoder.ofmt_ctx_1->nb_streams > i &&  encoder.ofmt_ctx_1->streams[i] && encoder.stream_ctx[i].enc_ctx)
 			avcodec_free_context(&encoder.stream_ctx[i].enc_ctx);
 		if (encoder.filter_ctx &&  encoder.filter_ctx[i].filter_graph)
 			avfilter_graph_free(&encoder.filter_ctx[i].filter_graph);
@@ -693,9 +720,9 @@ end:
 	av_free(encoder.filter_ctx);
 	av_free(encoder.stream_ctx);
 	avformat_close_input(&encoder.ifmt_ctx);
-	if (encoder.ofmt_ctx && !(encoder.ofmt_ctx->oformat->flags & AVFMT_NOFILE))
-		avio_closep(&encoder.ofmt_ctx->pb);
-	avformat_free_context(encoder.ofmt_ctx);
+	if (encoder.ofmt_ctx_1 && !(encoder.ofmt_ctx_1->oformat->flags & AVFMT_NOFILE))
+		avio_closep(&encoder.ofmt_ctx_1->pb);
+	avformat_free_context(encoder.ofmt_ctx_1);
 
 	if (ret < 0)
 		/*changed*/
