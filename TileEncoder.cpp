@@ -52,7 +52,8 @@ public:
 	static AVFormatContext* ofmt_ctx_2;
 	static AVFormatContext* ofmt_ctx_3;
 	static AVFormatContext* ofmt_ctx_4;
-	static FilteringContext* filter_ctx;	
+	static FilteringContext* filter_ctx[4];
+	
 	static StreamContext* stream_ctx;
 
 	static int open_input_file(const char* filename);
@@ -69,7 +70,7 @@ struct Encoder:: FilteringContext {
 	AVFilterContext* buffersink_ctx;
 	AVFilterContext* buffersrc_ctx;
 	AVFilterGraph* filter_graph;
-} FilteringContext;
+}FilteringContext;
 
 struct Encoder::StreamContext {
 	AVCodecContext* dec_ctx;
@@ -85,7 +86,7 @@ AVFormatContext* Encoder::ofmt_ctx_2 = NULL;
 AVFormatContext* Encoder::ofmt_ctx_3 = NULL;
 AVFormatContext* Encoder::ofmt_ctx_4 = NULL;
 
-struct Encoder::FilteringContext* Encoder::filter_ctx = NULL;
+struct Encoder::FilteringContext* Encoder::filter_ctx[] = {new FilteringContext(), new FilteringContext(), new FilteringContext(), new FilteringContext()};
 struct Encoder::StreamContext* Encoder::stream_ctx = NULL;
 
 
@@ -520,22 +521,19 @@ int Encoder::init_filter(FilteringContext* fctx, AVCodecContext* dec_ctx, AVCode
 			dec_ctx->sample_aspect_ratio.num,
 			dec_ctx->sample_aspect_ratio.den);
 
-		ret = avfilter_graph_create_filter(&buffersrc_ctx, buffersrc, "in",
-			args, NULL, filter_graph);
+		ret = avfilter_graph_create_filter(&buffersrc_ctx, buffersrc, "in", args, NULL, filter_graph);
 		if (ret < 0) {
 			av_log(NULL, AV_LOG_ERROR, "Cannot create buffer source\n");
 			goto end;
 		}
 
-		ret = avfilter_graph_create_filter(&buffersink_ctx, buffersink, "out",
-			NULL, NULL, filter_graph);
+		ret = avfilter_graph_create_filter(&buffersink_ctx, buffersink, "out", NULL, NULL, filter_graph);
 		if (ret < 0) {
 			av_log(NULL, AV_LOG_ERROR, "Cannot create buffer sink\n");
 			goto end;
 		}
 
-		ret = av_opt_set_bin(buffersink_ctx, "pix_fmts",
-			(uint8_t*)& enc_ctx_1->pix_fmt, sizeof(enc_ctx_1->pix_fmt),
+		ret = av_opt_set_bin(buffersink_ctx, "pix_fmts",(uint8_t*)& enc_ctx_1->pix_fmt, sizeof(enc_ctx_1->pix_fmt),
 			AV_OPT_SEARCH_CHILDREN);
 		if (ret < 0) {
 			av_log(NULL, AV_LOG_ERROR, "Cannot set output pixel format\n");
@@ -619,8 +617,7 @@ int Encoder::init_filter(FilteringContext* fctx, AVCodecContext* dec_ctx, AVCode
 		goto end;
 	}
 
-	if ((ret = avfilter_graph_parse_ptr(filter_graph, filter_spec,
-		&inputs, &outputs, NULL)) < 0)
+	if ((ret = avfilter_graph_parse_ptr(filter_graph, filter_spec, &inputs, &outputs, NULL)) < 0)
 		goto end;
 
 	if ((ret = avfilter_graph_config(filter_graph, NULL)) < 0)
@@ -643,14 +640,14 @@ int Encoder:: init_filters(int encoderNum)
 	const char* filter_spec;
 	unsigned int i;
 	int ret;
-	filter_ctx = (FilteringContext*)av_malloc_array(ifmt_ctx->nb_streams, sizeof(*filter_ctx));
+	filter_ctx[encoderNum] = (FilteringContext*)av_malloc_array(ifmt_ctx->nb_streams, sizeof(*filter_ctx));
 	if (!filter_ctx)
 		return AVERROR(ENOMEM);
 
 	for (i = 0; i < ifmt_ctx->nb_streams; i++) {
-		filter_ctx[i].buffersrc_ctx = NULL;
-		filter_ctx[i].buffersink_ctx = NULL;
-		filter_ctx[i].filter_graph = NULL;
+		filter_ctx[encoderNum][i].buffersrc_ctx = NULL;
+		filter_ctx[encoderNum][i].buffersink_ctx = NULL;
+		filter_ctx[encoderNum][i].filter_graph = NULL;
 		if (!(ifmt_ctx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO
 			|| ifmt_ctx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO))
 			continue;
@@ -664,13 +661,13 @@ int Encoder:: init_filters(int encoderNum)
 		/*Initialize 4 filters seperately for 4 encoders*/
 		ret = -1;
 		switch (encoderNum) {
-		case 1:ret = init_filter(&filter_ctx[i], stream_ctx[i].dec_ctx, stream_ctx[i].enc_ctx_1, filter_spec);
+		case 1:ret = init_filter(&filter_ctx[encoderNum][i], stream_ctx[i].dec_ctx, stream_ctx[i].enc_ctx_1, filter_spec);
 			break;
-		case 2:ret = init_filter(&filter_ctx[i], stream_ctx[i].dec_ctx, stream_ctx[i].enc_ctx_2, filter_spec);
+		case 2:ret = init_filter(&filter_ctx[encoderNum][i], stream_ctx[i].dec_ctx, stream_ctx[i].enc_ctx_2, filter_spec);
 			break;
-		case 3:ret = init_filter(&filter_ctx[i], stream_ctx[i].dec_ctx, stream_ctx[i].enc_ctx_3, filter_spec);
+		case 3:ret = init_filter(&filter_ctx[encoderNum][i], stream_ctx[i].dec_ctx, stream_ctx[i].enc_ctx_3, filter_spec);
 			break;
-		case 4:ret = init_filter(&filter_ctx[i], stream_ctx[i].dec_ctx, stream_ctx[i].enc_ctx_4, filter_spec);
+		case 4:ret = init_filter(&filter_ctx[encoderNum][i], stream_ctx[i].dec_ctx, stream_ctx[i].enc_ctx_4, filter_spec);
 			break;
 		}
 		
