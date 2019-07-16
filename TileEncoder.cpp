@@ -155,7 +155,7 @@ int Encoder:: open_output_file(const char* filename1, const char* filename2, con
 	AVStream* out_stream_3;
 	AVStream* out_stream_4;
 	AVStream* in_stream;
-	AVCodecContext* dec_ctx, *enc_ctx;
+	AVCodecContext* dec_ctx, *enc_ctx_1, *enc_ctx_2, *enc_ctx_3, *enc_ctx_4;
 	AVCodec* encoder;
 	int ret;
 	unsigned int i;
@@ -227,82 +227,171 @@ int Encoder:: open_output_file(const char* filename1, const char* filename2, con
 				av_log(NULL, AV_LOG_FATAL, "Necessary encoder not found\n");
 				return AVERROR_INVALIDDATA;
 			}
-			enc_ctx = avcodec_alloc_context3(encoder);
-			if (!enc_ctx) {
+			/*Allocating context for 4 other encoder contexts*/
+			enc_ctx_1 = avcodec_alloc_context3(encoder);
+			enc_ctx_2 = avcodec_alloc_context3(encoder);
+			enc_ctx_3 = avcodec_alloc_context3(encoder);
+			enc_ctx_4 = avcodec_alloc_context3(encoder);
+			/*===============================================*/
+
+			/*Validate whther 4 encode context are created or not*/
+			if (!enc_ctx_1) {
 				av_log(NULL, AV_LOG_FATAL, "Failed to allocate the encoder context\n");
 				return AVERROR(ENOMEM);
 			}
+			if (!enc_ctx_2) {
+				av_log(NULL, AV_LOG_FATAL, "Failed to allocate the encoder context\n");
+				return AVERROR(ENOMEM);
+			}
+			if (!enc_ctx_3) {
+				av_log(NULL, AV_LOG_FATAL, "Failed to allocate the encoder context\n");
+				return AVERROR(ENOMEM);
+			}
+			if (!enc_ctx_4) {
+				av_log(NULL, AV_LOG_FATAL, "Failed to allocate the encoder context\n");
+				return AVERROR(ENOMEM);
+			}
+			/*====================================================*/
 
 			/* In this example, we transcode to same properties (picture size,
 			 * sample rate etc.). These properties can be changed for output
 			 * streams easily using filters */
 			if (dec_ctx->codec_type == AVMEDIA_TYPE_VIDEO) {
-				enc_ctx->height = dec_ctx->height;
-				enc_ctx->width = dec_ctx->width;
-				enc_ctx->sample_aspect_ratio = dec_ctx->sample_aspect_ratio;
+				enc_ctx_1->height = dec_ctx->height; 
+				enc_ctx_2->height = dec_ctx->height;
+				enc_ctx_3->height = dec_ctx->height;
+				enc_ctx_4->height = dec_ctx->height;
+
+				enc_ctx_1->width = dec_ctx->width; 
+				enc_ctx_2->width = dec_ctx->width;
+				enc_ctx_3->width = dec_ctx->width;
+				enc_ctx_4->width = dec_ctx->width;
+
+				enc_ctx_1->sample_aspect_ratio = dec_ctx->sample_aspect_ratio; 
+				enc_ctx_2->sample_aspect_ratio = dec_ctx->sample_aspect_ratio;
+				enc_ctx_3->sample_aspect_ratio = dec_ctx->sample_aspect_ratio;
+				enc_ctx_4->sample_aspect_ratio = dec_ctx->sample_aspect_ratio;
+
 				/* take first format from list of supported formats */
-				if (encoder->pix_fmts)
-					enc_ctx->pix_fmt = encoder->pix_fmts[0];
-				else
-					enc_ctx->pix_fmt = dec_ctx->pix_fmt;
+				if (encoder->pix_fmts) {
+					enc_ctx_1->pix_fmt = encoder->pix_fmts[0];
+					enc_ctx_2->pix_fmt = encoder->pix_fmts[0];
+					enc_ctx_3->pix_fmt = encoder->pix_fmts[0];
+					enc_ctx_4->pix_fmt = encoder->pix_fmts[0];
+				}
+					
+				else {
+					enc_ctx_1->pix_fmt = dec_ctx->pix_fmt;
+					enc_ctx_2->pix_fmt = dec_ctx->pix_fmt;
+					enc_ctx_3->pix_fmt = dec_ctx->pix_fmt;
+					enc_ctx_4->pix_fmt = dec_ctx->pix_fmt;
+				}
+					
 				/* video time_base can be set to whatever is handy and supported by encoder */
 				AVRational av1 = { 1,60 };
-				enc_ctx->time_base = av1;
+				enc_ctx_1->time_base = av1;
+				enc_ctx_2->time_base = av1;
+				enc_ctx_3->time_base = av1;
+				enc_ctx_4->time_base = av1;
 				//enc_ctx_1->time_base = av_inv_q(dec_ctx->framerate);
 			}
 			else {
-				enc_ctx->sample_rate = dec_ctx->sample_rate;
-				enc_ctx->channel_layout = dec_ctx->channel_layout;
-				enc_ctx->channels = av_get_channel_layout_nb_channels(enc_ctx->channel_layout);
+				enc_ctx_1->sample_rate = dec_ctx->sample_rate;
+				enc_ctx_2->sample_rate = dec_ctx->sample_rate;
+				enc_ctx_3->sample_rate = dec_ctx->sample_rate;
+				enc_ctx_4->sample_rate = dec_ctx->sample_rate;
+
+				enc_ctx_1->channel_layout = dec_ctx->channel_layout;
+				enc_ctx_2->channel_layout = dec_ctx->channel_layout;
+				enc_ctx_3->channel_layout = dec_ctx->channel_layout;
+				enc_ctx_4->channel_layout = dec_ctx->channel_layout;
+
+				enc_ctx_1->channels = av_get_channel_layout_nb_channels(enc_ctx_1->channel_layout);
+				enc_ctx_2->channels = av_get_channel_layout_nb_channels(enc_ctx_2->channel_layout);
+				enc_ctx_3->channels = av_get_channel_layout_nb_channels(enc_ctx_3->channel_layout);
+				enc_ctx_4->channels = av_get_channel_layout_nb_channels(enc_ctx_4->channel_layout);
+
 				/* take first format from list of supported formats */
-				enc_ctx->sample_fmt = encoder->sample_fmts[0];
-				AVRational av2 = { 1, enc_ctx->sample_rate };
-				enc_ctx->time_base = av2;
+				enc_ctx_1->sample_fmt = encoder->sample_fmts[0];
+				enc_ctx_2->sample_fmt = encoder->sample_fmts[0];
+				enc_ctx_3->sample_fmt = encoder->sample_fmts[0];
+				enc_ctx_4->sample_fmt = encoder->sample_fmts[0];
+
+				AVRational av2 = { 1, enc_ctx_1->sample_rate };
+
+				enc_ctx_1->time_base = av2;
+				enc_ctx_2->time_base = av2;
+				enc_ctx_3->time_base = av2;
+				enc_ctx_4->time_base = av2;
 			}
 
 			/*Since all the 4 streams are the same we can 
 			just consider the ofmt_ctx_1*/
-			if (ofmt_ctx_1->oformat->flags & AVFMT_GLOBALHEADER)
-				enc_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+			if (ofmt_ctx_1->oformat->flags & AVFMT_GLOBALHEADER) {
+				enc_ctx_1->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+				enc_ctx_2->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+				enc_ctx_3->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+				enc_ctx_4->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+			}
+				
 
 			/* Third parameter can be used to pass settings to encoder */
-			ret = avcodec_open2(enc_ctx, encoder, NULL);
+			ret = avcodec_open2(enc_ctx_1, encoder, NULL);
 			if (ret < 0) {
-				av_log(NULL, AV_LOG_ERROR, "Cannot open video encoder for stream #%u\n", i);
+				av_log(NULL, AV_LOG_ERROR, "Cannot open video encoder for stream enc_ctx_1 #%u\n", i);
 				return ret;
 			}
+			ret = avcodec_open2(enc_ctx_2, encoder, NULL);
+			if (ret < 0) {
+				av_log(NULL, AV_LOG_ERROR, "Cannot open video encoder for stream enc_ctx_2 #%u\n", i);
+				return ret;
+			}
+			ret = avcodec_open2(enc_ctx_3, encoder, NULL);
+			if (ret < 0) {
+				av_log(NULL, AV_LOG_ERROR, "Cannot open video encoder for stream enc_ctx_3 #%u\n", i);
+				return ret;
+			}
+			ret = avcodec_open2(enc_ctx_4, encoder, NULL);
+			if (ret < 0) {
+				av_log(NULL, AV_LOG_ERROR, "Cannot open video encoder for stream enc_ctx_4 #%u\n", i);
+				return ret;
+			}
+			/*==========================================================*/
+
 
 			/*Copying the encoder parameter to the 4 output streams*/
-			ret = avcodec_parameters_from_context(out_stream_1->codecpar, enc_ctx);
+			ret = avcodec_parameters_from_context(out_stream_1->codecpar, enc_ctx_1);
 			if (ret < 0) {
 				av_log(NULL, AV_LOG_ERROR, "Failed to copy encoder parameters to output stream 1 #%u\n", i);
 				return ret;
 			}
-			ret = avcodec_parameters_from_context(out_stream_2->codecpar, enc_ctx);
+			ret = avcodec_parameters_from_context(out_stream_2->codecpar, enc_ctx_2);
 			if (ret < 0) {
 				av_log(NULL, AV_LOG_ERROR, "Failed to copy encoder parameters to output stream 2 #%u\n", i);
 				return ret;
 			}
-			ret = avcodec_parameters_from_context(out_stream_3->codecpar, enc_ctx);
+			ret = avcodec_parameters_from_context(out_stream_3->codecpar, enc_ctx_3);
 			if (ret < 0) {
 				av_log(NULL, AV_LOG_ERROR, "Failed to copy encoder parameters to output stream 3 #%u\n", i);
 				return ret;
 			}
-			ret = avcodec_parameters_from_context(out_stream_4->codecpar, enc_ctx);
+			ret = avcodec_parameters_from_context(out_stream_4->codecpar, enc_ctx_4);
 			if (ret < 0) {
 				av_log(NULL, AV_LOG_ERROR, "Failed to copy encoder parameters to output stream 4 #%u\n", i);
 				return ret;
 			}
+			/*======================================================*/
 
-			out_stream_1->time_base = enc_ctx->time_base;
-			out_stream_2->time_base = enc_ctx->time_base;
-			out_stream_3->time_base = enc_ctx->time_base;
-			out_stream_4->time_base = enc_ctx->time_base;
+			
+			out_stream_1->time_base = enc_ctx_1->time_base;
+			out_stream_2->time_base = enc_ctx_2->time_base;
+			out_stream_3->time_base = enc_ctx_3->time_base;
+			out_stream_4->time_base = enc_ctx_4->time_base;
 
-			stream_ctx[i].enc_ctx_1 = enc_ctx;
-			stream_ctx[i].enc_ctx_2 = enc_ctx;
-			stream_ctx[i].enc_ctx_3 = enc_ctx;
-			stream_ctx[i].enc_ctx_4 = enc_ctx;
+			stream_ctx[i].enc_ctx_1 = enc_ctx_1;
+			stream_ctx[i].enc_ctx_2 = enc_ctx_2;
+			stream_ctx[i].enc_ctx_3 = enc_ctx_3;
+			stream_ctx[i].enc_ctx_4 = enc_ctx_4;
 
 		}
 		else if (dec_ctx->codec_type == AVMEDIA_TYPE_UNKNOWN) {
@@ -720,9 +809,9 @@ int main(int argc, char** argv)
 		return 1;
 	}
 	*/
-	if ((ret = encoder.open_input_file("H:\\ocean_nosounsd_720p_0_0.mp4")) < 0)
+	if ((ret = encoder.open_input_file("E:\\ocean_nosounsd_720p_0_0.mp4")) < 0)
 		goto end;
-	if ((ret = encoder.open_output_file("H:\\output2_1.mp4", "H:\\output2_2.mp4", "H:\\output2_3.mp4", "H:\\output2_4.mp4")) < 0)
+	if ((ret = encoder.open_output_file("E:\\output2_1.mp4", "E:\\output2_2.mp4", "E:\\output2_3.mp4", "E:\\output2_4.mp4")) < 0)
 		goto end;
 	for (int i = 0; i < 4; i++) {
 		if ((ret = encoder.init_filters(i+1)) < 0)
