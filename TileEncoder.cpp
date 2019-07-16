@@ -388,8 +388,6 @@ int Encoder:: open_output_file(const char* filename1, const char* filename2, con
 		av_log(NULL, AV_LOG_ERROR, "Error occurred when opening output 4 file\n");
 		return ret;
 	}
-
-
 	return 0;
 }
 
