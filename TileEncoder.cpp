@@ -57,8 +57,8 @@ public:
 
 	static int open_input_file(const char* filename);
 	static int open_output_file(const char* filename1, const char* filename2, const char* filename3, const char* filename4);
-	static int init_filter(FilteringContext* fctx, AVCodecContext* dec_ctx, AVCodecContext* enc_ctx, const char* filter_spec);
-	static int init_filters(void);
+	static int init_filter(FilteringContext* fctx, AVCodecContext* dec_ctx, AVCodecContext* enc_ctx_1, const char* filter_spec);
+	static int init_filters(int);
 	static int encode_write_frame(AVFrame* filt_frame, unsigned int stream_index, int* got_frame);
 	static int filter_encode_write_frame(AVFrame* frame, unsigned int stream_index);
 	static int flush_encoder(unsigned int stream_index);
@@ -73,7 +73,10 @@ struct Encoder:: FilteringContext {
 
 struct Encoder::StreamContext {
 	AVCodecContext* dec_ctx;
-	AVCodecContext* enc_ctx;
+	AVCodecContext* enc_ctx_1;
+	AVCodecContext* enc_ctx_2;
+	AVCodecContext* enc_ctx_3;
+	AVCodecContext* enc_ctx_4;
 } StreamContext;
 
 AVFormatContext* Encoder::ifmt_ctx = NULL;
@@ -245,7 +248,7 @@ int Encoder:: open_output_file(const char* filename1, const char* filename2, con
 				/* video time_base can be set to whatever is handy and supported by encoder */
 				AVRational av1 = { 1,60 };
 				enc_ctx->time_base = av1;
-				//enc_ctx->time_base = av_inv_q(dec_ctx->framerate);
+				//enc_ctx_1->time_base = av_inv_q(dec_ctx->framerate);
 			}
 			else {
 				enc_ctx->sample_rate = dec_ctx->sample_rate;
@@ -296,7 +299,11 @@ int Encoder:: open_output_file(const char* filename1, const char* filename2, con
 			out_stream_3->time_base = enc_ctx->time_base;
 			out_stream_4->time_base = enc_ctx->time_base;
 
-			stream_ctx[i].enc_ctx = enc_ctx;
+			stream_ctx[i].enc_ctx_1 = enc_ctx;
+			stream_ctx[i].enc_ctx_2 = enc_ctx;
+			stream_ctx[i].enc_ctx_3 = enc_ctx;
+			stream_ctx[i].enc_ctx_4 = enc_ctx;
+
 		}
 		else if (dec_ctx->codec_type == AVMEDIA_TYPE_UNKNOWN) {
 			av_log(NULL, AV_LOG_FATAL, "Elementary stream #%d is of unknown type, cannot proceed\n", i);
@@ -391,7 +398,7 @@ int Encoder:: open_output_file(const char* filename1, const char* filename2, con
 	return 0;
 }
 
-int Encoder::init_filter(FilteringContext* fctx, AVCodecContext* dec_ctx, AVCodecContext* enc_ctx, const char* filter_spec)
+int Encoder::init_filter(FilteringContext* fctx, AVCodecContext* dec_ctx, AVCodecContext* enc_ctx_1, const char* filter_spec)
 {
 	char args[512];
 	int ret = 0;
@@ -439,7 +446,7 @@ int Encoder::init_filter(FilteringContext* fctx, AVCodecContext* dec_ctx, AVCode
 		}
 
 		ret = av_opt_set_bin(buffersink_ctx, "pix_fmts",
-			(uint8_t*)& enc_ctx->pix_fmt, sizeof(enc_ctx->pix_fmt),
+			(uint8_t*)& enc_ctx_1->pix_fmt, sizeof(enc_ctx_1->pix_fmt),
 			AV_OPT_SEARCH_CHILDREN);
 		if (ret < 0) {
 			av_log(NULL, AV_LOG_ERROR, "Cannot set output pixel format\n");
@@ -479,7 +486,7 @@ int Encoder::init_filter(FilteringContext* fctx, AVCodecContext* dec_ctx, AVCode
 		}
 
 		ret = av_opt_set_bin(buffersink_ctx, "sample_fmts",
-			(uint8_t*)& enc_ctx->sample_fmt, sizeof(enc_ctx->sample_fmt),
+			(uint8_t*)& enc_ctx_1->sample_fmt, sizeof(enc_ctx_1->sample_fmt),
 			AV_OPT_SEARCH_CHILDREN);
 		if (ret < 0) {
 			av_log(NULL, AV_LOG_ERROR, "Cannot set output sample format\n");
@@ -487,15 +494,15 @@ int Encoder::init_filter(FilteringContext* fctx, AVCodecContext* dec_ctx, AVCode
 		}
 
 		ret = av_opt_set_bin(buffersink_ctx, "channel_layouts",
-			(uint8_t*)& enc_ctx->channel_layout,
-			sizeof(enc_ctx->channel_layout), AV_OPT_SEARCH_CHILDREN);
+			(uint8_t*)& enc_ctx_1->channel_layout,
+			sizeof(enc_ctx_1->channel_layout), AV_OPT_SEARCH_CHILDREN);
 		if (ret < 0) {
 			av_log(NULL, AV_LOG_ERROR, "Cannot set output channel layout\n");
 			goto end;
 		}
 
 		ret = av_opt_set_bin(buffersink_ctx, "sample_rates",
-			(uint8_t*)& enc_ctx->sample_rate, sizeof(enc_ctx->sample_rate),
+			(uint8_t*)& enc_ctx_1->sample_rate, sizeof(enc_ctx_1->sample_rate),
 			AV_OPT_SEARCH_CHILDREN);
 		if (ret < 0) {
 			av_log(NULL, AV_LOG_ERROR, "Cannot set output sample rate\n");
@@ -542,7 +549,7 @@ end:
 	return ret;
 }
 
-int Encoder:: init_filters(void)
+int Encoder:: init_filters(int encoderNum)
 {
 	const char* filter_spec;
 	unsigned int i;
@@ -564,10 +571,23 @@ int Encoder:: init_filters(void)
 			filter_spec = "null"; /* passthrough (dummy) filter for video */
 		else
 			filter_spec = "anull"; /* passthrough (dummy) filter for audio */
-		ret = init_filter(&filter_ctx[i], stream_ctx[i].dec_ctx,
-			stream_ctx[i].enc_ctx, filter_spec);
+
+		/*Initialize 4 filters seperately for 4 encoders*/
+		ret = -1;
+		switch (encoderNum) {
+		case 1:ret = init_filter(&filter_ctx[i], stream_ctx[i].dec_ctx, stream_ctx[i].enc_ctx_1, filter_spec);
+			break;
+		case 2:ret = init_filter(&filter_ctx[i], stream_ctx[i].dec_ctx, stream_ctx[i].enc_ctx_2, filter_spec);
+			break;
+		case 3:ret = init_filter(&filter_ctx[i], stream_ctx[i].dec_ctx, stream_ctx[i].enc_ctx_3, filter_spec);
+			break;
+		case 4:ret = init_filter(&filter_ctx[i], stream_ctx[i].dec_ctx, stream_ctx[i].enc_ctx_4, filter_spec);
+			break;
+		}
+		
 		if (ret)
 			return ret;
+
 	}
 	return 0;
 }
@@ -592,37 +612,8 @@ int Encoder::encode_write_frame(AVFrame* filt_frame, unsigned int stream_index, 
 
 	//if (filt_frame)
 		//printf("Send frame %3"PRId64"\n", filt_frame->pts);
-	ret = enc_func(stream_ctx[stream_index].enc_ctx, &enc_pkt,
+	ret = enc_func(stream_ctx[stream_index].enc_ctx_1, &enc_pkt,
 		filt_frame, got_frame);
-	/*=========*/
-
-
-	/*ret = avcodec_send_frame(stream_ctx[stream_index].enc_ctx, filt_frame);
-	if (ret < 0) {
-		fprintf(stderr, "Error sending a frame for encoding\n");
-		exit(1);
-	}
-
-	while (ret >= 0) {
-		ret = avcodec_receive_packet(stream_ctx[stream_index].enc_ctx, &enc_pkt);
-		av_frame_free(&filt_frame);
-		if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
-			return 0;
-		else if (ret < 0) {
-			fprintf(stderr, "Error during encoding\n");
-			exit(1);
-		}
-
-		/*printf("Write packet %3"PRId64" (size=%5d)\n", pkt->pts, pkt->size);
-		fwrite(pkt->data, 1, pkt->size, outfile);
-		av_packet_unref(pkt);
-
-
-	}*/
-
-
-
-
 
 	av_frame_free(&filt_frame);
 	if (ret < 0)
@@ -633,7 +624,7 @@ int Encoder::encode_write_frame(AVFrame* filt_frame, unsigned int stream_index, 
 	/* prepare packet for muxing */
 	enc_pkt.stream_index = stream_index;
 	av_packet_rescale_ts(&enc_pkt,
-		stream_ctx[stream_index].enc_ctx->time_base,
+		stream_ctx[stream_index].enc_ctx_1->time_base,
 		ofmt_ctx_1->streams[stream_index]->time_base);
 
 	av_log(NULL, AV_LOG_INFO, "Muxing frame\n");
@@ -691,7 +682,7 @@ int Encoder::flush_encoder(unsigned int stream_index)
 	int ret;
 	int got_frame;
 
-	if (!(stream_ctx[stream_index].enc_ctx->codec->capabilities &
+	if (!(stream_ctx[stream_index].enc_ctx_1->codec->capabilities &
 		AV_CODEC_CAP_DELAY))
 		return 0;
 
@@ -729,12 +720,14 @@ int main(int argc, char** argv)
 		return 1;
 	}
 	*/
-	if ((ret = encoder.open_input_file("E:\\ocean_720p_noSound_0_0.mp4")) < 0)
+	if ((ret = encoder.open_input_file("H:\\ocean_nosounsd_720p_0_0.mp4")) < 0)
 		goto end;
-	if ((ret = encoder.open_output_file("E:\\output2_new_new_120.mp4")) < 0)
+	if ((ret = encoder.open_output_file("H:\\output2_1.mp4", "H:\\output2_2.mp4", "H:\\output2_3.mp4", "H:\\output2_4.mp4")) < 0)
 		goto end;
-	if ((ret = encoder.init_filters()) < 0)
-		goto end;
+	for (int i = 0; i < 4; i++) {
+		if ((ret = encoder.init_filters(i+1)) < 0)
+			goto end;
+	}
 
 	/* read all packets */
 	while (1) {
@@ -766,7 +759,10 @@ int main(int argc, char** argv)
 			}
 
 			if (got_frame) {
+				
 				frame->pts = frame->best_effort_timestamp;
+				av_log(NULL, AV_LOG_INFO, "Packet number  %d \n", frame->pts);
+			
 				ret = encoder.filter_encode_write_frame(frame, stream_index);
 				av_frame_free(&frame);
 				if (ret < 0)
@@ -814,8 +810,20 @@ end:
 	av_frame_free(&frame);
 	for (i = 0; i < encoder.ifmt_ctx->nb_streams; i++) {
 		avcodec_free_context(&encoder.stream_ctx[i].dec_ctx);
-		if (encoder.ofmt_ctx_1 &&  encoder.ofmt_ctx_1->nb_streams > i &&  encoder.ofmt_ctx_1->streams[i] && encoder.stream_ctx[i].enc_ctx)
-			avcodec_free_context(&encoder.stream_ctx[i].enc_ctx);
+		if (encoder.ofmt_ctx_1 &&  encoder.ofmt_ctx_1->nb_streams > i &&  encoder.ofmt_ctx_1->streams[i] && encoder.stream_ctx[i].enc_ctx_1)
+			avcodec_free_context(&encoder.stream_ctx[i].enc_ctx_1);
+
+		/*adding new 3 encoders*/
+		if (encoder.ofmt_ctx_2 && encoder.ofmt_ctx_2->nb_streams > i && encoder.ofmt_ctx_2->streams[i] && encoder.stream_ctx[i].enc_ctx_2)
+			avcodec_free_context(&encoder.stream_ctx[i].enc_ctx_2);
+
+		if (encoder.ofmt_ctx_3 && encoder.ofmt_ctx_3->nb_streams > i && encoder.ofmt_ctx_3->streams[i] && encoder.stream_ctx[i].enc_ctx_3)
+			avcodec_free_context(&encoder.stream_ctx[i].enc_ctx_3);
+
+		if (encoder.ofmt_ctx_4 && encoder.ofmt_ctx_4->nb_streams > i && encoder.ofmt_ctx_4->streams[i] && encoder.stream_ctx[i].enc_ctx_4)
+			avcodec_free_context(&encoder.stream_ctx[i].enc_ctx_4);
+
+
 		if (encoder.filter_ctx &&  encoder.filter_ctx[i].filter_graph)
 			avfilter_graph_free(&encoder.filter_ctx[i].filter_graph);
 	}
