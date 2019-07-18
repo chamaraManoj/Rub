@@ -261,6 +261,22 @@ int Encoder:: open_output_file(const char* filename1, const char* filename2, con
 
 
 
+				/*enc_ctx_1->bit_rate = 88000;
+				enc_ctx_2->bit_rate = 88000;
+				enc_ctx_3->bit_rate = 88000;
+				enc_ctx_4->bit_rate = 88000;
+
+				enc_ctx_1->rc_min_rate = 90000;
+				enc_ctx_2->rc_min_rate = 90000;
+				enc_ctx_3->rc_min_rate = 90000;
+				enc_ctx_4->rc_min_rate = 90000;
+
+				enc_ctx_1->rc_max_rate = 86000;
+				enc_ctx_2->rc_max_rate = 86000;
+				enc_ctx_3->rc_max_rate = 86000;
+				enc_ctx_4->rc_max_rate = 86000;*/
+
+
 
 				enc_ctx_1->height = dec_ctx->height; 
 				enc_ctx_2->height = dec_ctx->height;
@@ -280,19 +296,19 @@ int Encoder:: open_output_file(const char* filename1, const char* filename2, con
 				//enc_ct
 				
 				/* take first format from list of supported formats */
-				if (encoder->pix_fmts) {
+				//if (encoder->pix_fmts) 
 					enc_ctx_1->pix_fmt = AV_PIX_FMT_YUV420P;
 					enc_ctx_2->pix_fmt = AV_PIX_FMT_YUV420P;
 					enc_ctx_3->pix_fmt = AV_PIX_FMT_YUV420P;
 					enc_ctx_4->pix_fmt = AV_PIX_FMT_YUV420P;
-				}
+				
 					
-				else {
+				/*else {
 					enc_ctx_1->pix_fmt = dec_ctx->pix_fmt;
 					enc_ctx_2->pix_fmt = dec_ctx->pix_fmt;
 					enc_ctx_3->pix_fmt = dec_ctx->pix_fmt;
 					enc_ctx_4->pix_fmt = dec_ctx->pix_fmt;
-				}
+				}*/
 					
 				/* video time_base can be set to whatever is handy and supported by encoder */
 				AVRational av1 = { 1,60};
@@ -317,10 +333,10 @@ int Encoder:: open_output_file(const char* filename1, const char* filename2, con
 				enc_ctx_3->framerate = av3;
 				enc_ctx_4->framerate = av3;*/
 
-				av_opt_set(enc_ctx_1->priv_data, "preset", "veryslow", 0);
-				av_opt_set(enc_ctx_2->priv_data, "preset", "veryslow", 0);
-				av_opt_set(enc_ctx_3->priv_data, "preset", "veryslow", 0);
-				av_opt_set(enc_ctx_4->priv_data, "preset", "veryslow", 0);
+				av_opt_set(enc_ctx_1->priv_data, "preset", "slow", 0);
+				av_opt_set(enc_ctx_2->priv_data, "preset", "slow", 0);
+				av_opt_set(enc_ctx_3->priv_data, "preset", "slow", 0);
+				av_opt_set(enc_ctx_4->priv_data, "preset", "slow", 0);
 
 			}
 			else {
@@ -854,12 +870,14 @@ int main(int argc, char** argv)
 	int frameCounter = 0;
 	int frameCounterMod;
 
+
 	/*if (argc != 3) {
 		av_log(NULL, AV_LOG_ERROR, "Usage: %s <input file> <output file>\n", argv[0]);
 		return 1;
 	}
 	*/
-	if ((ret = encoder.open_input_file("E:\\ocean_nosounsd_720p_0_0.mp4")) < 0)
+
+	if ((ret = encoder.open_input_file("E:\\SelfLearning\\Rubiks\\RubiksVideos\\frame_0_2\\ocean_nosound_720p_0_2.mp4")) < 0)
 		goto end;
 	if ((ret = encoder.open_output_file("E:\\output2_1.mp4", "E:\\output2_2.mp4", "E:\\output2_3.mp4", "E:\\output2_4.mp4")) < 0)
 		goto end;
@@ -923,9 +941,9 @@ int main(int argc, char** argv)
 				else {
 					switch (frameCounterMod) {
 					case 0 : ret = encoder.filter_encode_write_frame(frame, stream_index, 0);
-						ret = encoder.filter_encode_write_frame(frame, stream_index, 3);
-						ret = encoder.filter_encode_write_frame(frame, stream_index, 1);
-						ret = encoder.filter_encode_write_frame(frame, stream_index, 2);
+						//ret = encoder.filter_encode_write_frame(frame, stream_index, 3);
+						//ret = encoder.filter_encode_write_frame(frame, stream_index, 1);
+						//ret = encoder.filter_encode_write_frame(frame, stream_index, 2);
 						av_frame_free(&frame);
 						if (ret < 0)
 							goto end;
@@ -933,8 +951,8 @@ int main(int argc, char** argv)
 						
 					case 1: ret = encoder.filter_encode_write_frame(frame, stream_index, 1);
 						//ret = encoder.filter_encode_write_frame(frame, stream_index, 0);
-						ret = encoder.filter_encode_write_frame(frame, stream_index, 3);
-						ret = encoder.filter_encode_write_frame(frame, stream_index, 2);
+						//ret = encoder.filter_encode_write_frame(frame, stream_index, 3);
+						//ret = encoder.filter_encode_write_frame(frame, stream_index, 2);
 						av_frame_free(&frame);
 						if (ret < 0)
 							goto end;
@@ -942,8 +960,8 @@ int main(int argc, char** argv)
 
 					case 2:ret = encoder.filter_encode_write_frame(frame, stream_index, 2);
 						//ret = encoder.filter_encode_write_frame(frame, stream_index, 0);
-						ret = encoder.filter_encode_write_frame(frame, stream_index, 3);
-						ret = encoder.filter_encode_write_frame(frame, stream_index, 1);
+						//ret = encoder.filter_encode_write_frame(frame, stream_index, 3);
+						//ret = encoder.filter_encode_write_frame(frame, stream_index, 1);
 						av_frame_free(&frame);
 						if (ret < 0)
 							goto end;
@@ -951,8 +969,8 @@ int main(int argc, char** argv)
 
 					case 3:ret = encoder.filter_encode_write_frame(frame, stream_index, 3);
 						//ret = encoder.filter_encode_write_frame(frame, stream_index, 0);
-						ret = encoder.filter_encode_write_frame(frame, stream_index, 2);
-						ret = encoder.filter_encode_write_frame(frame, stream_index, 1);
+						//ret = encoder.filter_encode_write_frame(frame, stream_index, 2);
+						//ret = encoder.filter_encode_write_frame(frame, stream_index, 1);
 						av_frame_free(&frame);
 						if (ret < 0)
 							goto end;
